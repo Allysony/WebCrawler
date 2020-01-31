@@ -1,19 +1,27 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse  # check out this library, will prob use
+
+# use library lxml here
+from lxml import html
+
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
 
-def extract_next_links(url, resp):
-    # Implementation requred.
-    return list()
+
+def extract_next_links(url, resp) -> list:
+    # resp is pages content (in html)
+    # Implementation required.
+    pass
+
 
 def is_valid(url):
     try:
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
+        # implementation required FIND TRAPS HERE!
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
@@ -25,5 +33,5 @@ def is_valid(url):
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
     except TypeError:
-        print ("TypeError for ", parsed)
+        print("TypeError for ", parsed)
         raise
