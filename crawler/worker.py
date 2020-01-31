@@ -5,6 +5,11 @@ from utils import get_logger
 from scraper import scraper
 import time
 
+# this file does the crawling calls the scraper
+
+# this is what we would alter to multi thread
+
+
 
 class Worker(Thread):
     def __init__(self, worker_id, config, frontier):
