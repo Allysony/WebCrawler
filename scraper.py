@@ -2,6 +2,7 @@ import re
 from urllib.parse import urlparse  # check out this library, will prob use
 
 # use library lxml here
+
 from lxml import html
 
 
@@ -10,10 +11,32 @@ def scraper(url, resp):
     return [link for link in links if is_valid(link)]
 
 
+""" 
+NOTE: 
+
+.iterlinks():
+This yields (element, attribute, link, pos) for every link in the document. 
+attribute may be None if the link is in the text 
+(as will be the case with a <style> tag with @import).
+;USE ITERLINKS[2] TO GET LINKS
+
+"""
+
+
 def extract_next_links(url, resp) -> list:
     # resp is pages content (in html)
-    # Implementation required.
-    pass
+    result_next_links = []
+    print("url: ", url)
+    print("resp:", resp)
+
+    if resp.raw_response is not None:
+        # html file of curr doc using lxml document_fromstring
+        html_content = html.document_fromstring(resp.raw_response.text)
+        # links on curr doc using lxml iterlinks()[2]
+        for i in html_content.iterlinks():
+            result_next_links.append(i[2])
+            print(i[2])
+    return result_next_links
 
 
 def is_valid(url):
