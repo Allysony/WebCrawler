@@ -64,6 +64,7 @@ def is_valid(url):
                 and parsed.netloc not in {"today.uci.edu/department/information_computer_sciences"}:
             return False
 
+
         # Do not include fragments
         if "#" in parsed.path:
             return False
