@@ -5,6 +5,8 @@ from urllib.parse import urlparse  # check out this library, will prob use
 
 from lxml import html
 
+from lxml import etree
+
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -25,25 +27,40 @@ attribute may be None if the link is in the text
 
 def extract_next_links(url, resp) -> list:
     # resp is pages content (in html)
-    result_next_links = []
-    print("url: ", url)
-    print("resp:", resp)
+    result_next_links = set()
+    try:
+        if resp.raw_response is not None:  # make sure the page exists
+            # html file of curr doc using lxml document_fromstring
+            #if resp.status not in range(500, 699):
+            if resp.status == 200:
+                # look at absolute
+                html_content = html.document_fromstring(resp.raw_response.text)
+                # links on curr doc using lxml iterlinks()[2]
+                for i in html_content.iterlinks():
+                    result_next_links.add(i[2])
+                    print(resp.status, url)
 
-    if resp.raw_response is not None:
-        # html file of curr doc using lxml document_fromstring
-        html_content = html.document_fromstring(resp.raw_response.text)
-        # links on curr doc using lxml iterlinks()[2]
-        for i in html_content.iterlinks():
-            result_next_links.append(i[2])
-            print(i[2])
-    return result_next_links
+    except ValueError:
+        pass
+
+    return list(result_next_links)
 
 
 def is_valid(url):
     try:
         parsed = urlparse(url)
+
         if parsed.scheme not in set(["http", "https"]):
             return False
+        if parsed.query != '':
+            return False
+        if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"}:
+            return False
+
+        # if no response
+
+
+        # length
         # implementation required FIND TRAPS HERE!
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
