@@ -38,7 +38,7 @@ def extract_next_links(url, resp) -> list:
                 # links on curr doc using lxml iterlinks()[2]
                 for i in html_content.iterlinks():
                     result_next_links.add(i[2])
-                    print(resp.status, url)
+                print(resp.status, url)
 
     except ValueError:
         pass
@@ -57,8 +57,8 @@ def is_valid(url):
         if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"}:
             return False
 
-        # if no response
-
+        if "#" in parsed.path:
+            return False
 
         # length
         # implementation required FIND TRAPS HERE!
