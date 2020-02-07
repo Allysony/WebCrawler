@@ -65,6 +65,7 @@ def is_valid(url):
             return False
 
 
+
         # Do not include fragments
         if "#" in parsed.path:
             return False
