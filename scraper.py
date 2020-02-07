@@ -4,8 +4,7 @@ from urllib.parse import urlparse  # check out this library, will prob use
 # use library lxml here
 
 from lxml import html
-
-from lxml import etree
+import multiprocessing
 
 
 def scraper(url, resp):
@@ -29,17 +28,19 @@ def extract_next_links(url, resp) -> list:
     # resp is pages content (in html)
     result_next_links = set()
     try:
-        if resp.raw_response is not None:  # make sure the page exists
-            # html file of curr doc using lxml document_fromstring
-            #if resp.status not in range(500, 699):
-            if resp.status == 200:
-                # look at absolute
+        # make sure the page exists
+        if resp.raw_response is not None:
+            # make sure not extracting pages with request errors
+            if resp.status in range(200, 399):
+                # TODO look at absolute here ???
+                # ------- NOTE: got html file of curr doc using lxml document_fromstring -----
                 html_content = html.document_fromstring(resp.raw_response.text)
-                # links on curr doc using lxml iterlinks()[2]
+                # ------- NOTE: links on curr doc using lxml iterlinks()[2] ----------
+                # add unique extracted links to the list
                 for i in html_content.iterlinks():
                     result_next_links.add(i[2])
-                    print(resp.status, url)
-
+                print(resp.status, url)
+    # TODO We should account for sitemap xml, for now unicode errors are being caught here
     except ValueError:
         pass
 
@@ -49,19 +50,25 @@ def extract_next_links(url, resp) -> list:
 def is_valid(url):
     try:
         parsed = urlparse(url)
-
+        # The max length of a URL in the address bar is 2048 characters
+        if len(url) > 2048:
+            return False
+        # The URL must be in http or https
         if parsed.scheme not in set(["http", "https"]):
             return False
+        # Do not include queries, due to causing infinite requests
         if parsed.query != '':
             return False
+        # URL must be within the specified domains
         if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"}:
             return False
+        # Do not include fragments
+        if "#" in parsed.path:
+            return False
+        # TODO account for sites that are timing out
 
-        # if no response
+        # TODO find endless loops maybe make a regex????? EXAMPLE: https://ics.uci.edu/a/a/a/a/a/a/a/a/a/a/a/a/a
 
-
-        # length
-        # implementation required FIND TRAPS HERE!
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
