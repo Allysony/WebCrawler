@@ -60,8 +60,10 @@ def is_valid(url):
         if parsed.query != '':
             return False
         # URL must be within the specified domains
-        if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"}:
+        if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"} and parsed.netloc not in {'today.uci.edu/department/information_computer_sciences'}:
             return False
+
+
         # Do not include fragments
         if "#" in parsed.path:
             return False
