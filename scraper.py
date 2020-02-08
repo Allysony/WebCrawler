@@ -1,27 +1,12 @@
 import re
-from urllib.parse import urlparse  # check out this library, will prob use
-
-# use library lxml here
-
+from urllib.parse import urlparse
 from lxml import html
-import multiprocessing
+import requests
 
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
-
-
-""" 
-NOTE: 
-
-.iterlinks():
-This yields (element, attribute, link, pos) for every link in the document. 
-attribute may be None if the link is in the text 
-(as will be the case with a <style> tag with @import).
-;USE ITERLINKS[2] TO GET LINKS
-
-"""
 
 
 def extract_next_links(url, resp) -> list:
@@ -30,16 +15,14 @@ def extract_next_links(url, resp) -> list:
     try:
         # make sure the page exists
         if resp.raw_response is not None:
-            # make sure not extracting pages with request errors
-            if resp.status in range(200, 399):
-                # TODO look at absolute here ???
-                # ------- NOTE: got html file of curr doc using lxml document_fromstring -----
-                html_content = html.document_fromstring(resp.raw_response.text)
-                # ------- NOTE: links on curr doc using lxml iterlinks()[2] ----------
-                # add unique extracted links to the list
-                for i in html_content.iterlinks():
-                    result_next_links.add(i[2])
-                print(resp.status, url)
+            # TODO look at make links absolute here ??? TA's Suggestion
+            # ------- NOTE: got html file of curr doc using lxml document_fromstring -----
+            html_content = html.document_fromstring(resp.raw_response.text)
+            # ------- NOTE: links on curr doc using lxml iterlinks()[2] ----------
+            # add unique extracted links to the list
+            for i in html_content.iterlinks():
+                result_next_links.add(i[2])
+            print(resp.status, url)
     # TODO We should account for sitemap xml, for now unicode errors are being caught here
     except ValueError:
         pass
@@ -48,13 +31,13 @@ def extract_next_links(url, resp) -> list:
 
 
 def is_valid(url):
-    try:
+    try: # order matters!
         parsed = urlparse(url)
-        # The max length of a URL in the address bar is 2048 characters
-        if len(url) > 2048:
-            return False
         # The URL must be in http or https
         if parsed.scheme not in set(["http", "https"]):
+            return False
+        # The max length of a URL in the address bar is 2048 characters
+        if len(url) > 2048:
             return False
         # Do not include queries, due to causing infinite requests
         if parsed.query != '':
@@ -63,18 +46,21 @@ def is_valid(url):
         if parsed.netloc[4:] not in {"stat.uci.edu", "ics.uci.edu", "informatics.uci.edu", "cs.uci.edu"} \
                 and parsed.netloc not in {"today.uci.edu/department/information_computer_sciences"}:
             return False
-
-
-
         # Do not include fragments
-        if "#" in parsed.path:
+        if parsed.fragment != '':
+            return False
+        # make sure not extracting pages with request errors
+        if requests.get(url, timeout=300).status_code not in range(200, 399):
+            return False
+        # Do not include endless loops EXAMPLE: https://ics.uci.edu/a/a/a/a/a/a/a/a/a/a/a/a/a
+        # ------- NOTE: I used "\w" to catch first group of chars of (length between 1 to inf),
+        #               then compare next non capturing group with that first group by using "\1"
+        #               Only a match if 2 or more non capturing groups matches that first group.
+        #               Repeat for each group. EXAMPLE OF MATCH: /foo/bar/aba/aba/aba -------------------
+        if re.match(r"(\w+)(?:\W+\1){2,}", parsed.path.lower()):
             return False
 
         # TODO find duplicate pages
-
-        # TODO account for sites that are timing out
-
-        # TODO find endless loops maybe make a regex????? EXAMPLE: https://ics.uci.edu/a/a/a/a/a/a/a/a/a/a/a/a/a
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
@@ -85,7 +71,11 @@ def is_valid(url):
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
-
+    # implementing a timeout to detect and avoid stalling
+    except TimeoutError:
+        # stalling too long. took longer than 5 minutes
+        print("TimeoutError for ", parsed)
+        return False
     except TypeError:
         print("TypeError for ", parsed)
         raise
