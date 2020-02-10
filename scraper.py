@@ -15,23 +15,23 @@ def extract_next_links(url, resp) -> list:
     try:
         # make sure the page exists
         if resp.raw_response is not None:
-            # TODO look at make links absolute here ??? TA's Suggestion
             # ------- NOTE: got html file of curr doc using lxml document_fromstring -----
             html_content = html.document_fromstring(resp.raw_response.text)
+            # make links absolute
+            html_content.make_links_absolute(url, resolve_base_href=True)
             # ------- NOTE: links on curr doc using lxml iterlinks()[2] ----------
             # add unique extracted links to the list
             for i in html_content.iterlinks():
                 result_next_links.add(i[2])
-            print(resp.status, url)
+                print(i)
     # TODO We should account for sitemap xml, for now unicode errors are being caught here
     except ValueError:
         pass
-
     return list(result_next_links)
 
 
 def is_valid(url):
-    try: # order matters!
+    try:
         parsed = urlparse(url)
         # The URL must be in http or https
         if parsed.scheme not in set(["http", "https"]):
