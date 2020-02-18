@@ -3,16 +3,21 @@ from urllib.parse import urlparse
 from lxml import html, etree
 import requests
 
+from bs4 import BeautifulSoup
+
 
 def scraper(url, resp):
-    links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    links, word_list = extract_next_links(url, resp)
+    return [link for link in links if is_valid(link)], word_list
 
 
-def extract_next_links(url, resp) -> list:
+def extract_next_links(url, resp):
     # resp is pages content (in html)
     result_next_links = list()
     html_content = None
+
+    is_longer_page = False
+    text = []
     try:
         # make sure the page exists
         if resp.raw_response is not None:
@@ -20,12 +25,30 @@ def extract_next_links(url, resp) -> list:
             html_content = html.document_fromstring(resp.raw_response.text)
             # make links absolute
             html_content.make_links_absolute(url, resolve_base_href=True)
+
+            soup = BeautifulSoup(resp.raw_response.text)
+            for script in soup(['script', 'style']):
+                script.extract()
+
+            curr_page_content = soup.get_text()
+            lines = (line.strip() for line in curr_page_content.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split('  '))
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+
+            text = text.split('\n')
+            for i in range(len(text)):
+                temp = text[i].split(' ')
+                text[i] = temp
+
     # ----------NOTE: order matters bc Parse Error is super class of XML syntax error --------
     except etree.XMLSyntaxError:
         print("Xml error, COULD NOT EXTRACT LINKS FROM URL: " + url)
         pass
     except etree.ParseError:
         print("Parser error, COULD NOT EXTRACT LINKS FROM URL: " + url)
+        pass
+    except ValueError:
+        print("Unicode error, COULD NOT EXTRACT LINKS FROM URL: " + url)
         pass
     # ------- NOTE: links on curr doc using lxml iterlinks()[2] ----------
     # add unique extracted links to the list
@@ -35,7 +58,11 @@ def extract_next_links(url, resp) -> list:
             if i[2] != url:
                 result_next_links.append(i[2])
                 print(i)
-    return result_next_links
+
+    if is_longer_page:
+        return result_next_links, text
+    else:
+        return result_next_links, text
 
 
 def is_valid(url):
